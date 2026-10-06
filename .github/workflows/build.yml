@@ -1,0 +1,20 @@
+name: Build IPA
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          unzip -q *.zip -d src
+          cd "$(dirname "$(find src -name '*.xcodeproj' | head -1)")"
+          PROJ=$(find . -maxdepth 1 -name '*.xcodeproj' | head -1)
+          SCHEME=$(xcodebuild -project "$PROJ" -list | sed -n '/Schemes:/,$p' | sed -n '2p' | xargs)
+          xcodebuild -project "$PROJ" -scheme "$SCHEME" -configuration Release -sdk iphoneos -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+          mkdir Payload
+          cp -r build/Build/Products/Release-iphoneos/*.app Payload/
+          zip -r "$GITHUB_WORKSPACE/app.ipa" Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app
+          path: app.ipa
